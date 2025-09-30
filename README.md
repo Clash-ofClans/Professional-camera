@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الكاميرا الاحترافي الآمن</title>
+    <title>كاميرا فورية (Direct Camera)</title>
     <!-- تحميل مكتبة Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -41,11 +41,11 @@
             width: 100%;
             flex-grow: 1; 
             object-fit: cover; 
-            /* سيتم تحديث التحويل (transform) بواسطة JavaScript ليضم (scaleX(-1) + Zoom Scale) */
+            /* تطبيق التحويل الأولي: قلب الصورة للكاميرا الأمامية وتطبيق الزوم الأساسي */
             transform: scaleX(-1) scale(1.0); 
             transition: filter 0.3s ease-out, transform 0.3s ease-out; 
             display: none; 
-            transform-origin: center center; /* نقطة التركيز للزوم */
+            transform-origin: center center; 
         }
         
         /* تأثير زر الالتقاط (شبيه بأبل) */
@@ -76,15 +76,6 @@
             padding: 1rem;
         }
         
-        /* تصميم زر وضع الكاميرا */
-        .mode-chip {
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 600;
-        }
-
         /* رسالة التحذير (بدلاً من alert) */
         .alert-message {
             animation: fadeInOut 3s ease-in-out forwards;
@@ -97,12 +88,12 @@
             100% { opacity: 0; transform: translateY(-20px); }
         }
         
-        /* شريط الإعدادات الاحترافية الجانبي (من اليسار) */
+        /* شريط الإعدادات الاحترافية الجانبي */
         #settings-drawer {
             position: absolute;
             top: 0;
             left: 0;
-            width: 280px; /* زيادة العرض قليلاً */
+            width: 280px; 
             max-width: 90%;
             height: 100%;
             background-color: rgba(30, 30, 30, 0.98);
@@ -121,7 +112,7 @@
 
         /* شريط التحكم السفلي المدمج الجديد */
         #control-bar {
-            background-color: rgba(0, 0, 0, 0.7); /* خلفية شبه شفافة */
+            background-color: rgba(0, 0, 0, 0.7); 
             backdrop-filter: blur(5px);
             padding: 1rem;
             position: relative;
@@ -144,11 +135,9 @@
             <p id="status-text">جاري محاولة الوصول للكاميرا...</p>
         </div>
         
-        <!-- أيقونات الحالة العلوية -->
+        <!-- أيقونات الحالة العلوية (شريط حالة الهاتف) -->
         <div class="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-center text-xs font-semibold bg-gradient-to-b from-black/80 to-transparent">
             <span id="current-time">10:00</span>
-            <!-- عرض معرف المستخدم بالكامل -->
-            <span id="user-id-display" class="text-gray-400 text-[10px] truncate max-w-[150px] cursor-pointer" title="معرف المستخدم (للتخزين الآمن في Firestore)">Loading ID...</span>
             <div class="flex items-center space-x-1 space-x-reverse">
                 <span class="text-green-500">5G</span>
                 <i data-lucide="battery-charging" class="w-4 h-4"></i>
@@ -161,16 +150,10 @@
         <!-- 2. واجهة التحكم السفلية المدمجة -->
         <div id="control-bar" class="flex flex-col items-center">
             
-            <!-- قائمة أوضاع الكاميرا -->
-            <div class="flex justify-center mb-6 text-sm font-medium space-x-6 space-x-reverse">
-                <!-- وضع الصورة العادية -->
-                <span id="mode-normal" class="mode-chip text-gray-400 hover:text-white" onclick="togglePortraitMode(false)">صورة</span>
-                <!-- وضع البورتريه (افتراضي) -->
-                <span id="mode-portrait" class="mode-chip text-yellow-400 border-b-2 border-yellow-400 pb-1" onclick="togglePortraitMode(true)">بورتريه</span>
-            </div>
-
+            <!-- تم إزالة شريط أوضاع الكاميرا (Normal/Portrait) للتبسيط -->
+            
             <!-- صف الأزرار الرئيسية (Gallery - Shutter - Pro Settings) -->
-            <div class="flex justify-between items-center w-full px-8"> 
+            <div class="flex justify-between items-center w-full px-8 pt-4"> 
                 
                 <!-- 1. زر المعرض/الصور الملتقطة (الزر الأيسر) -->
                 <div onclick="showCapturedImage()" class="w-10 h-10 bg-gray-600 rounded-full border-2 border-white/50 flex items-center justify-center text-sm font-bold cursor-pointer transition hover:scale-105">
@@ -195,7 +178,8 @@
                 <button onclick="hideCapturedImage()" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
                     العودة للكاميرا
                 </button>
-                <button onclick="deleteLastPhoto()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                <!-- حذف الصورة يتم من الذاكرة المحلية فقط الآن -->
+                <button onclick="deletePhotoFromPreview()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
                     حذف الصورة
                 </button>
             </div>
@@ -204,7 +188,7 @@
         <!-- 4. لوحة الإعدادات الاحترافية (Pro Settings Drawer) -->
         <div id="settings-drawer" class="">
             <div class="flex justify-between items-center mb-6">
-                 <h4 class="text-lg font-bold text-yellow-400">إعدادات التصوير الفوتوغرافي المتقدمة (Pro Max)</h4>
+                 <h4 class="text-lg font-bold text-yellow-400">إعدادات التصوير المتقدمة (Pro Max)</h4>
                  <button onclick="toggleSettingsPanel()" class="text-white hover:text-gray-400 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             
@@ -243,7 +227,6 @@
             <!-- التحكم بدرجة حرارة اللون (Color Temp) - White Balance -->
              <div class="mb-6">
                 <label for="colorTemp" class="block text-sm font-medium mb-2">درجة حرارة اللون (Warmth) <span id="colorTemp-value" class="text-yellow-400">0%</span></label>
-                <!-- 0 = Neutral/Day (Cool), 100 = Very Warm/Night (Orange) -->
                 <input type="range" id="colorTemp" min="0" max="100" step="5" value="0" oninput="updateFilter('colorTemp', this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
             </div>
             
@@ -292,9 +275,6 @@
                 <input type="range" id="zoom" min="100" max="2000" step="10" value="100" oninput="updateFilter('zoom', this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
             </div>
             
-            <p class="text-xs text-gray-400 mt-8">
-                **ملاحظة الأمان:** يتم حفظ الإعدادات التي استخدمتها مع كل صورة في Firestore.
-            </p>
         </div>
 
     </div>
@@ -302,123 +282,7 @@
     <!-- عنصر Canvas مخفي لالتقاط الإطار -->
     <canvas id="photo-canvas" style="display: none;"></canvas>
 
-    <!-- تضمين مكتبات Firebase والمنطق -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // تعريف المتغيرات في النطاق العام (window) للوصول من الدوال الأخرى
-        window.firebaseApp = null;
-        window.db = null;
-        window.auth = null;
-        window.userId = null;
-        window.photosCollectionRef = null;
-        window.lastPhotoDocId = null; // لتتبع آخر صورة ملتقطة لحذفها
-        window.photoCount = 0; // لحفظ عدد الصور
-
-        // --- وظيفة التهيئة والمصادقة ---
-        async function initializeFirebase() {
-            try {
-                // استخدام المتغيرات العامة المتوفرة من Canvas
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-                if (!firebaseConfig) {
-                    console.error("Error: Firebase configuration not provided.");
-                    window.alertUser("خطأ في الأمان: لم يتم تحميل إعدادات Firebase.");
-                    return;
-                }
-
-                window.firebaseApp = initializeApp(firebaseConfig);
-                window.db = getFirestore(window.firebaseApp);
-                window.auth = getAuth(window.firebaseApp);
-
-                // 1. المصادقة التلقائية باستخدام التوكن أو المجهول
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(window.auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(window.auth);
-                }
-
-                // 2. تحديث حالة المصادقة بعد تسجيل الدخول
-                onAuthStateChanged(window.auth, (user) => {
-                    if (user) {
-                        window.userId = user.uid;
-                        // عرض معرف المستخدم بالكامل
-                        document.getElementById('user-id-display').textContent = `ID: ${window.userId}`;
-                        
-                        // تعيين مسار التخزين الآمن والخاص للمستخدم
-                        window.photosCollectionRef = collection(window.db, `artifacts/${appId}/users/${window.userId}/captured_photos`);
-
-                        // بدء الاستماع للصور بمجرد جاهزية المصادقة
-                        window.setupPhotoListener();
-                    } else {
-                        console.warn("User not authenticated.");
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error initializing Firebase or authentication:", error);
-                window.alertUser(`خطأ في الأمان: فشل المصادقة (${error.code || error.message})`);
-            }
-        }
-
-        // --- وظيفة الاستماع للصور الملتقطة (لتحديث عداد الصور وشاشة المعاينة) ---
-        window.setupPhotoListener = function() {
-            if (!window.photosCollectionRef) return;
-
-            // الاستماع للصور وترتيبها حسب الطابع الزمني (timestamp)
-            const q = query(window.photosCollectionRef);
-            
-            onSnapshot(q, (snapshot) => {
-                // فرز البيانات محلياً (تجنباً لأخطاء الفهرسة في Firestore)
-                const sortedDocs = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)); // الأحدث أولاً
-
-                window.photoCount = sortedDocs.length;
-                
-                if (window.photoCount > 0) {
-                    const latestPhoto = sortedDocs[0];
-                    window.lastPhotoDocId = latestPhoto.id; // حفظ ID آخر صورة
-                    // عرض آخر صورة ملتقطة في شاشة المعاينة
-                    document.getElementById('captured-image').src = latestPhoto.imageData;
-                } else {
-                    window.lastPhotoDocId = null;
-                    document.getElementById('captured-image').src = "https://placehold.co/400x300/1e293b/94a3b8?text=لا+صور";
-                }
-            }, (error) => {
-                console.error("Error listening to Firestore:", error);
-                window.alertUser("خطأ في تحميل بيانات الصور المخزنة.");
-            });
-        };
-
-        // --- وظيفة حذف آخر صورة ملتقطة ---
-        window.deleteLastPhoto = async function() {
-            if (!window.lastPhotoDocId || !window.db || !window.userId) {
-                window.alertUser("لا توجد صورة لحذفها أو بيانات المصادقة غير متوفرة.");
-                return;
-            }
-
-            try {
-                // تأكيد المسار الآمن للحذف
-                const docRef = doc(window.db, window.photosCollectionRef.path, window.lastPhotoDocId);
-                await deleteDoc(docRef);
-                window.alertUser("تم حذف الصورة بنجاح!");
-                window.lastPhotoDocId = null; // إزالة الـ ID بعد الحذف
-                window.hideCapturedImage();
-            } catch (error) {
-                console.error("Error deleting document:", error);
-                window.alertUser("فشل الحذف. قد لا تملك الصلاحيات.");
-            }
-        };
-
-        // تشغيل عملية التهيئة
-        initializeFirebase();
-    </script>
-
-    <!-- JavaScript لتطبيق الكاميرا -->
+    <!-- JavaScript لتطبيق الكاميرا (تم حذف Firebase بالكامل) -->
     <script>
         // دمج أيقونات Lucide
         lucide.createIcons();
@@ -428,14 +292,13 @@
         const statusOverlay = document.getElementById('status-overlay');
         const statusText = document.getElementById('status-text');
         const previewScreen = document.getElementById('preview-screen');
-        const modeNormal = document.getElementById('mode-normal');
-        const modePortrait = document.getElementById('mode-portrait');
         const settingsDrawer = document.getElementById('settings-drawer');
         const moonModeToggle = document.getElementById('moon-mode-toggle');
+        const capturedImageDisplay = document.getElementById('captured-image');
 
-        let isPortraitMode = true; 
         let isMoonMode = false; 
-        
+        let lastCapturedImageData = null; // لتخزين آخر صورة ملتقطة محلياً
+
         // حالة الفلاتر الاحترافية
         let currentFilters = {
             exposure: 0, 
@@ -447,13 +310,12 @@
             zoom: 100, 
         };
 
-        // --- وظيفة تحديث الوقت (تمت إتاحتها عالمياً) ---
+        // --- وظيفة تحديث الوقت ---
         function updateTime() {
             const now = new Date();
             // تنسيق الوقت للعرض (مثال: 08:15 PM)
             document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         }
-        // تحديث كل 60 ثانية
         setInterval(updateTime, 60000); 
 
         // --- وظيفة عرض رسالة للمستخدم (بدلاً من alert) ---
@@ -476,12 +338,7 @@
                 // وضع القمر: تباين عالٍ جداً، سطوع منخفض، أسود وأبيض تقريباً
                 combinedFilter = ' contrast(400%) brightness(30%) grayscale(10%)'; 
             } else {
-                // وضع البورتريه
-                if (isPortraitMode) {
-                    // محاكاة تأثير البورتريه عبر ضبابية خفيفة في العرض المباشر فقط
-                    combinedFilter += ' blur(5px) '; 
-                }
-
+                
                 // تطبيق الإعدادات الاحترافية للتصوير الطبيعي
                 const brightnessFactor = (currentFilters.exposure / 5 * 0.5) + 1; 
                 combinedFilter += ` brightness(${brightnessFactor * 100}%)`;
@@ -491,7 +348,7 @@
                 combinedFilter += ` grayscale(${isoNoise}%) `; 
                 if (currentFilters.iso > 50) {
                      // تطبيق ضبابية بسيطة لزيادة الإحساس بالتشويش في الإضاءة المنخفضة
-                     combinedFilter += ` blur(${isoNoise * 3}px) `; 
+                     combinedFilter += ` blur(${isoNoise * 1.5}px) `; // تخفيف الضبابية قليلاً
                 }
 
                 combinedFilter += ` contrast(${currentFilters.contrast}%)`;
@@ -532,7 +389,6 @@
         // --- وظيفة إظهار/إخفاء لوحة الإعدادات الاحترافية ---
         window.toggleSettingsPanel = function() {
             settingsDrawer.classList.toggle('open');
-            // التأكد من أن الأيقونات محدثة
             lucide.createIcons();
         }
 
@@ -544,28 +400,30 @@
                 moonModeToggle.textContent = 'تشغيل';
                 moonModeToggle.classList.remove('bg-gray-700');
                 moonModeToggle.classList.add('bg-blue-600', 'text-white');
-                // إلغاء تفعيل وضعي الصورة والبورتريه عند تشغيل وضع القمر
-                togglePortraitMode(false, true); 
-                modePortrait.classList.add('opacity-50', 'pointer-events-none');
-                modeNormal.classList.add('opacity-50', 'pointer-events-none');
-
             } else {
                 moonModeToggle.textContent = 'إيقاف';
                 moonModeToggle.classList.remove('bg-blue-600', 'text-white');
                 moonModeToggle.classList.add('bg-gray-700');
-                // إعادة تفعيل وضعي الصورة والبورتريه (إعادة تعيين الافتراضي للبورتريه)
-                modePortrait.classList.remove('opacity-50', 'pointer-events-none');
-                modeNormal.classList.remove('opacity-50', 'pointer-events-none');
-                togglePortraitMode(true); 
             }
             applyFilters();
         }
 
 
-        // --- وظيفة بدء تشغيل الكاميرا ---
+        // --- وظيفة بدء تشغيل الكاميرا (مع معالجة الأخطاء المحسّنة) ---
         async function startCamera() {
             updateTime();
             try {
+                // التحقق من دعم المتصفح
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    statusText.innerHTML = `
+                        <i data-lucide="alert-triangle" class="w-8 h-8 text-red-500 mb-4 mx-auto"></i>
+                        <p class="font-bold mb-2">خطأ فادح:</p>
+                        هذا المتصفح لا يدعم الوصول إلى الكاميرا.
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
                 statusText.textContent = "جاري فتح الكاميرا...";
                 // طلب الوصول إلى الكاميرا الأمامية ('user')
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -581,41 +439,41 @@
 
             } catch (error) {
                 console.error("Error accessing camera:", error);
-                statusText.innerHTML = `
-                    تعذر الوصول للكاميرا. <br/>
-                    الخطأ: ${error.name} <br/>
-                    <span class="text-sm text-red-400">يرجى التأكد من السماح بالوصول عبر المتصفح.</span>
-                `;
+                
+                let errorMessage = "حدث خطأ غير معروف أثناء محاولة الوصول للكاميرا.";
+
+                // معالجة أخطاء الرفض (السبب الأكثر شيوعاً)
+                if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+                    errorMessage = `
+                        <i data-lucide="camera-off" class="w-8 h-8 text-red-500 mb-4 mx-auto"></i>
+                        <p class="font-bold mb-2 text-yellow-400">**تم رفض الوصول للكاميرا**</p>
+                        لفتح الكاميرا، يجب عليك **السماح** بالوصول عبر النافذة المنبثقة التي تظهر في متصفحك.
+                        <br/><span class="text-sm text-gray-400"> (عادةً ما تكون في الزاوية العلوية).</span>
+                    `;
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = `
+                        <i data-lucide="scan-face" class="w-8 h-8 text-red-500 mb-4 mx-auto"></i>
+                        <p class="font-bold mb-2">لم يتم العثور على كاميرا</p>
+                        يرجى التأكد من أن جهازك يحتوي على كاميرا.
+                    `;
+                } else {
+                     errorMessage = `
+                        <i data-lucide="bug" class="w-8 h-8 text-red-500 mb-4 mx-auto"></i>
+                        <p class="font-bold mb-2">خطأ غير متوقع:</p>
+                        ${error.name}: ${error.message}
+                    `;
+                }
+
+                statusText.innerHTML = errorMessage;
+                lucide.createIcons(); 
             }
         }
         window.startCamera = startCamera; 
-
-        // --- وظيفة تبديل وضع البورتريه/العادي ---
-        window.togglePortraitMode = function(enablePortrait, silent = false) {
-            if (isMoonMode && !silent) return; // لا تسمح بالتغيير إذا كان وضع القمر مفعلاً
-            
-            isPortraitMode = enablePortrait;
-            
-            // تحديث تصميم الأزرار
-            modePortrait.classList.toggle('text-yellow-400', isPortraitMode);
-            modePortrait.classList.toggle('border-b-2', isPortraitMode);
-            modePortrait.classList.toggle('border-yellow-400', isPortraitMode);
-            modePortrait.classList.toggle('text-gray-400', !isPortraitMode);
-            modePortrait.classList.toggle('hover:text-white', !isPortraitMode);
-
-            modeNormal.classList.toggle('text-yellow-400', !isPortraitMode);
-            modeNormal.classList.toggle('border-b-2', !isPortraitMode);
-            modeNormal.classList.toggle('border-yellow-400', !isPortraitMode);
-            modeNormal.classList.toggle('text-gray-400', isPortraitMode);
-            modeNormal.classList.toggle('hover:text-white', isPortraitMode);
-
-            applyFilters();
-        }
         
         // --- وظيفة التقاط الصورة (Snap) ---
         window.takePhoto = function() {
-            if (!videoFeed.srcObject || !window.db) {
-                alertUser("الكاميرا ليست جاهزة أو اتصال قاعدة البيانات غير مكتمل.");
+            if (!videoFeed.srcObject) {
+                alertUser("الكاميرا ليست جاهزة بعد.");
                 return;
             }
 
@@ -657,11 +515,15 @@
             context.setTransform(1, 0, 0, 1, 0, 0);
             context.filter = 'none'; 
 
-            // 6. تحويل الصورة إلى Base64 بجودة عالية (JPEG 1.0)
+            // 6. تحويل الصورة إلى Base64 بجودة عالية
             const dataUrl = photoCanvas.toDataURL('image/jpeg', 1.0); 
             
-            // 7. حفظ البيانات الآمن في Firestore
-            savePhotoToFirestore(dataUrl);
+            // 7. حفظ البيانات محلياً وعرضها (بدون Firestore)
+            lastCapturedImageData = dataUrl;
+            capturedImageDisplay.src = dataUrl;
+            alertUser("تم التقاط الصورة بنجاح!");
+            showCapturedImage();
+
 
             // 8. تأثير بصري
             const captureBtn = document.getElementById('capture-btn');
@@ -669,40 +531,9 @@
             setTimeout(() => { captureBtn.style.backgroundColor = 'white'; }, 100);
         }
 
-        // --- حفظ الصورة في Firestore ---
-        async function savePhotoToFirestore(imageData) {
-            if (!window.photosCollectionRef) {
-                alertUser("فشل الحفظ: لم يتم إعداد مسار التخزين. يرجى التحقق من المصادقة.");
-                return;
-            }
-            try {
-                const currentMode = isMoonMode ? 'Moon Mode' : (isPortraitMode ? 'Portrait' : 'Normal');
-                await window.addDoc(window.photosCollectionRef, {
-                    imageData: imageData, // حفظ البيانات المشفرة (Base64)
-                    mode: currentMode,
-                    exposure: currentFilters.exposure,
-                    iso: currentFilters.iso, 
-                    contrast: currentFilters.contrast,
-                    saturation: currentFilters.saturation,
-                    hue: currentFilters.hue, 
-                    colorTemp: currentFilters.colorTemp, 
-                    zoom: currentFilters.zoom,
-                    timestamp: window.serverTimestamp() // وقت الحفظ
-                });
-                console.log("Image securely saved to Firestore.");
-                alertUser("تم التقاط وحفظ الصورة بنجاح!");
-            } catch (e) {
-                console.error("Error saving photo to Firestore: ", e);
-                alertUser("فشل حفظ الصورة! (البيانات كبيرة جداً أو مشكلة اتصال)");
-            }
-        }
-        // إتاحة وظائف Firestore المستوردة للاستخدام العالمي
-        window.addDoc = window.db ? window.db.addDoc : null; // سيتم تعيينها عند اكتمال التهيئة
-        window.serverTimestamp = () => ({ seconds: Date.now() / 1000, nanoseconds: 0 }); // محاكاة إذا لم تكن جاهزة
-
-        // --- عرض وإخفاء شاشة المعاينة ---
+        // --- عرض شاشة المعاينة ---
         window.showCapturedImage = function() {
-            if (window.photoCount > 0) {
+             if (lastCapturedImageData) {
                 previewScreen.classList.remove('hidden');
                 previewScreen.classList.add('flex');
             } else {
@@ -710,12 +541,22 @@
             }
         }
         
+        // --- إخفاء شاشة المعاينة ---
         window.hideCapturedImage = function() {
             previewScreen.classList.add('hidden');
             previewScreen.classList.remove('flex');
         }
 
-        // بدء تشغيل الكاميرا بعد اكتمال تهيئة Firebase
+        // --- حذف الصورة من الذاكرة المحلية (الهدف الشخصي) ---
+        window.deletePhotoFromPreview = function() {
+            lastCapturedImageData = null;
+            capturedImageDisplay.src = "https://placehold.co/400x300/1e293b/94a3b8?text=لا+صور";
+            alertUser("تم مسح الصورة من الذاكرة المحلية.");
+            window.hideCapturedImage();
+        };
+
+
+        // بدء تشغيل الكاميرا فوراً
         window.startCamera();
     </script>
 </body>
