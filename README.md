@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>📷 الكاميرا الفورية</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- تحميل أيقونات Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     body {
@@ -34,7 +35,8 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scaleX(-1);
+      /* يعكس الصورة لتبدو مثل المرآة (للكاميرا الأمامية) */
+      transform: scaleX(-1); 
       display: none;
     }
     #status-overlay {
@@ -72,7 +74,12 @@
 </head>
 <body>
   <div id="camera-container">
-    <!-- شاشة الحالة -->
+    <!-- شاشة العد التنازلي للمؤقت الذاتي -->
+    <div id="countdown-overlay" class="absolute inset-0 flex items-center justify-center z-40 bg-black/30 hidden">
+        <span id="countdown-text" class="text-[8rem] sm:text-[10rem] font-extrabold text-white opacity-90 animate-pulse drop-shadow-2xl">5</span>
+    </div>
+
+    <!-- شاشة الحالة (تظهر عند الإطلاق أو الخطأ) -->
     <div id="status-overlay">
       <svg class="animate-spin h-10 w-10 text-yellow-400 mb-4" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -86,11 +93,20 @@
 
     <!-- أدوات التصوير -->
     <div id="control-bar" class="absolute bottom-0 w-full bg-black/60 backdrop-blur-md p-4 flex justify-center items-center space-x-6 space-x-reverse">
-      <div onclick="showCapturedImage()" class="w-10 h-10 bg-gray-600 rounded-full border-2 border-white/50 flex items-center justify-center cursor-pointer hover:scale-105 transition">
+      <!-- زر المؤقت الذاتي -->
+      <button id="timer-btn" onclick="toggleTimer()" class="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition border-2 border-white/50 text-white">
+        <i data-lucide="timer" class="w-5 h-5"></i>
+      </button>
+
+      <!-- زر المعاينة للصور الملتقطة -->
+      <div id="image-preview-btn" onclick="showCapturedImage()" class="w-10 h-10 bg-gray-600 rounded-full border-2 border-white/50 flex items-center justify-center cursor-pointer hover:scale-105 transition">
         <i data-lucide="image" class="w-5 h-5 text-white"></i>
       </div>
-      <button id="capture-btn" onclick="takePhoto()" class="rounded-full focus:outline-none"></button>
-      <div class="w-10 h-10"></div>
+      
+      <!-- زر التصوير الرئيسي (يبدأ العد التنازلي إذا كان المؤقت مفعّلاً) -->
+      <button id="capture-btn" onclick="startCaptureSequence()" class="rounded-full focus:outline-none"></button>
+      
+      <div class="w-10 h-10"></div> <!-- للحفاظ على التوازن -->
     </div>
 
     <!-- شاشة المعاينة -->
@@ -107,6 +123,7 @@
   <canvas id="photo-canvas" style="display:none;"></canvas>
 
   <script>
+    // تهيئة أيقونات Lucide
     lucide.createIcons();
 
     const videoFeed = document.getElementById('video-feed');
@@ -115,27 +132,41 @@
     const photoCanvas = document.getElementById('photo-canvas');
     const previewScreen = document.getElementById('preview-screen');
     const capturedImageDisplay = document.getElementById('captured-image');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownText = document.getElementById('countdown-text');
+    const timerBtn = document.getElementById('timer-btn');
+    const captureBtn = document.getElementById('capture-btn');
+    const imagePreviewBtn = document.getElementById('image-preview-btn');
 
     let lastCapturedImageData = null;
+    let isTimerActive = false;
+    let countdownInterval = null;
 
+    // معالج أخطاء عام
     window.onerror = (msg) => {
-      statusText.innerHTML = `<p class="text-red-400 font-bold">${msg}</p>`;
+      showError(`حدث خطأ عام: ${msg}`);
     };
 
     function showError(msg) {
       statusText.innerHTML = `<p class="text-red-400 font-bold">${msg}</p>`;
+      statusOverlay.classList.remove('hidden');
+      videoFeed.style.display = 'none';
     }
 
+    // بدء تشغيل الكاميرا
     async function startCamera() {
+      // إجبار على استخدام HTTPS أو localhost لأسباب أمنية
       if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
         showError('⚠️ يجب فتح الصفحة عبر HTTPS أو localhost ليعمل الكاميرا.');
         return;
       }
 
       try {
+        // طلب بث الفيديو من الكاميرا الأمامية
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         videoFeed.srcObject = stream;
         videoFeed.onloadedmetadata = () => {
+          // إخفاء شاشة الحالة عند بدء بث الفيديو بنجاح
           videoFeed.style.display = 'block';
           statusOverlay.classList.add('hidden');
         };
@@ -146,15 +177,88 @@
         else showError(`❌ خطأ: ${error.message}`);
       }
     }
+    
+    // التبديل بين وضع المؤقت الذاتي والإيقاف
+    function toggleTimer() {
+        if (countdownInterval) return; // لا يمكن التبديل أثناء العد
+        
+        isTimerActive = !isTimerActive;
+        // تحديث مظهر زر المؤقت
+        timerBtn.classList.toggle('bg-teal-600', isTimerActive);
+        timerBtn.classList.toggle('border-teal-600', isTimerActive);
+        timerBtn.classList.toggle('bg-transparent', !isTimerActive);
+        timerBtn.classList.toggle('border-white/50', !isTimerActive);
+    }
+
+    // المنطق الرئيسي لبدء التصوير (إما فوري أو بعد مؤقت)
+    function startCaptureSequence() {
+      if (!videoFeed.srcObject) return;
+
+      if (isTimerActive) {
+        startCountdown(5); // بدء العد التنازلي من 5 ثوان
+      } else {
+        takePhoto(); // التقاط فوري
+      }
+    }
+
+    // دالة العد التنازلي
+    function startCountdown(seconds) {
+      let count = seconds;
+      
+      // إخفاء أدوات التحكم وتعطيل زر التصوير أثناء العد
+      captureBtn.disabled = true;
+      timerBtn.disabled = true;
+      imagePreviewBtn.style.opacity = '0.5';
+      captureBtn.style.opacity = '0.5';
+      
+      countdownText.textContent = count;
+      countdownOverlay.classList.remove('hidden');
+
+      countdownInterval = setInterval(() => {
+        count -= 1;
+        countdownText.textContent = count;
+        countdownText.classList.remove('animate-pulse'); // إعادة تفعيل الأنماط
+        void countdownText.offsetWidth; // إعادة تشغيل الحركة
+        countdownText.classList.add('animate-pulse');
+
+        if (count <= 0) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+          countdownOverlay.classList.add('hidden');
+          
+          // إعادة تفعيل الأزرار والتقاط الصورة
+          captureBtn.disabled = false;
+          timerBtn.disabled = false;
+          imagePreviewBtn.style.opacity = '1';
+          captureBtn.style.opacity = '1';
+          takePhoto(); 
+        }
+      }, 1000);
+    }
 
     function takePhoto() {
       if (!videoFeed.srcObject) return;
+      
+      // إظهار وميض شاشة التصوير
+      const flash = document.createElement('div');
+      flash.className = 'absolute inset-0 bg-white z-40 opacity-0 transition-opacity duration-75';
+      document.getElementById('camera-container').appendChild(flash);
+      
+      setTimeout(() => { flash.style.opacity = '0.9'; }, 10);
+      setTimeout(() => { 
+        flash.style.opacity = '0'; 
+        setTimeout(() => flash.remove(), 100);
+      }, 100);
+
+
       photoCanvas.width = videoFeed.videoWidth;
       photoCanvas.height = videoFeed.videoHeight;
       const ctx = photoCanvas.getContext('2d');
+      // عكس الصورة
       ctx.translate(photoCanvas.width, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(videoFeed, 0, 0);
+      ctx.drawImage(videoFeed, 0, 0, photoCanvas.width, photoCanvas.height);
+      
       const dataUrl = photoCanvas.toDataURL('image/jpeg', 1.0);
       lastCapturedImageData = dataUrl;
       capturedImageDisplay.src = dataUrl;
@@ -178,6 +282,7 @@
       hideCapturedImage();
     }
 
+    // بدء تشغيل التطبيق
     startCamera();
   </script>
 </body>
